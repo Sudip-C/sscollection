@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import AuthPanel from "./AuthPanel";
+import { Link } from "react-router";
 
 const collections = [
   {
@@ -55,7 +56,13 @@ function App() {
           {authReady &&
             (user ? (
               <div className="flex items-center gap-4">
+                {user.app_metadata?.role === "admin" && (
+                    <Link to="/admin" className="text-sm font-bold underline">
+                      Admin
+                    </Link>
+                  )}
                 <span className="hidden max-w-48 truncate text-sm sm:block">
+                  
                   {user.email}
                 </span>
                 <button
@@ -83,9 +90,7 @@ function App() {
           </p>
         )}
       </header>
-              {showAuth && !user && (
-        <AuthPanel onClose={() => setShowAuth(false)} />
-      )}
+      {showAuth && !user && <AuthPanel onClose={() => setShowAuth(false)} />}
       <main className="mx-auto max-w-7xl px-6 py-16 sm:px-10 sm:py-24">
         <p className="mb-8 text-xs font-bold tracking-widest uppercase">
           Modern menswear / Everyday essentials
