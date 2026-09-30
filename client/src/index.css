@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #f5f5ef;
+  --color-ink: #191c18;
+  --color-accent: #ff5b22;
+  --color-muted: #5c625a;
+  --color-line: #d5d8cf;
+  --color-surface: #e7e8df;
+
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Anton", sans-serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-width: 320px;
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-ink);
+  }
+}
