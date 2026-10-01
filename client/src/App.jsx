@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import AuthPanel from "./AuthPanel";
 import { Link } from "react-router";
+import ProductGrid from "./ProductGrid";
 
 const collections = [
   {
@@ -57,12 +58,11 @@ function App() {
             (user ? (
               <div className="flex items-center gap-4">
                 {user.app_metadata?.role === "admin" && (
-                    <Link to="/admin" className="text-sm font-bold underline">
-                      Admin
-                    </Link>
-                  )}
+                  <Link to="/admin" className="text-sm font-bold underline">
+                    Admin
+                  </Link>
+                )}
                 <span className="hidden max-w-48 truncate text-sm sm:block">
-                  
                   {user.email}
                 </span>
                 <button
@@ -137,7 +137,7 @@ function App() {
           </div>
         </section>
       </main>
-
+      <ProductGrid />
       <footer className="border-t border-line px-6 py-6 text-center text-sm text-muted">
         ss.collection — Tees. Shorts. Your move.
       </footer>

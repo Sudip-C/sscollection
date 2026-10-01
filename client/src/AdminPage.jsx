@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { adminFetch } from './lib/adminApi'
 import ProductDraftForm from './ProductDraftForm'
 import ProductImages from './ProductImages.jsx'
+import ProductPublishing from './ProductPublishing.jsx'
 
 function AdminPage() {
   const [status, setStatus] = useState('checking')
@@ -201,6 +202,7 @@ function AdminPage() {
           <ProductDraftForm categories={categories} />
         )}
         {status === 'ready' && <ProductImages />}
+        {status === 'ready' && <ProductPublishing />}
       </main>
     </div>
   )
