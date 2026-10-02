@@ -23,8 +23,7 @@ export default function ProductImages() {
     async function loadDrafts() {
       const { data, error: loadError } = await supabase
         .from('products')
-        .select('id, name, sku, image_paths')
-        .eq('is_active', false)
+        .select('id, name, sku, image_paths, is_active')
         .order('created_at', { ascending: false })
 
       if (!active) return
@@ -111,10 +110,106 @@ export default function ProductImages() {
       setPending(false)
     }
   }
+async function handleReplace(oldPath, replacement) {
+  if (!selected || !replacement) return
 
+  setError('')
+  setMessage('')
+
+  const extension = extensions[replacement.type]
+
+  if (!extension || replacement.size > 2 * 1024 * 1024) {
+    setError('Choose a JPG, PNG, or WebP image under 2 MB.')
+    return
+  }
+
+  setPending(true)
+
+  const productId = selected.id
+  const productName = selected.name
+  const newPath = `products/${productId}/${crypto.randomUUID()}.${extension}`
+  let uploaded = false
+
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(newPath, replacement, {
+        contentType: replacement.type,
+        upsert: false,
+      })
+
+    if (uploadError) throw uploadError
+    uploaded = true
+
+    const { data: current, error: readError } = await supabase
+      .from('products')
+      .select('image_paths')
+      .eq('id', productId)
+      .single()
+
+    if (readError) throw readError
+
+    const nextPaths = [...(current.image_paths ?? [])]
+    const position = nextPaths.indexOf(oldPath)
+
+    if (position === -1) {
+      throw new Error('This photo changed. Refresh the page and try again.')
+    }
+
+    nextPaths[position] = newPath
+
+    const { data: updated, error: saveError } = await supabase
+      .from('products')
+      .update({ image_paths: nextPaths })
+      .eq('id', productId)
+      .select('id, image_paths')
+      .single()
+
+    if (saveError) throw saveError
+    uploaded = false
+
+    setProducts((currentProducts) =>
+      currentProducts.map((product) =>
+        product.id === updated.id
+          ? { ...product, image_paths: updated.image_paths }
+          : product,
+      ),
+    )
+
+    const { error: removalError } = await supabase.storage
+      .from(bucket)
+      .remove([oldPath])
+
+    if (removalError) {
+      setError(
+        `New photo saved, but the old file could not be removed: ` +
+          `${removalError.message}. Old path: ${oldPath}`,
+      )
+      return
+    }
+
+    setMessage(`Photo replaced for ${productName}.`)
+  } catch (replaceError) {
+    if (uploaded) {
+      const { error: cleanupError } = await supabase.storage
+        .from(bucket)
+        .remove([newPath])
+
+      setError(
+        cleanupError
+          ? `${replaceError.message} Also remove this unused upload in Storage: ${newPath}`
+          : replaceError.message,
+      )
+    } else {
+      setError(replaceError.message)
+    }
+  } finally {
+    setPending(false)
+  }
+}
   return (
     <section className="mt-10 bg-surface p-6 sm:p-8">
-      <h2 className="text-lg font-bold">Draft images</h2>
+      <h2 className="text-lg font-bold">Product images</h2>
 
       <form onSubmit={handleUpload} className="mt-6 grid max-w-xl gap-4">
         <label className="grid gap-2 text-sm font-bold">
@@ -158,21 +253,37 @@ export default function ProductImages() {
       {message && <p role="status" className="mt-4 text-sm">{message}</p>}
 
       {selected && (
-        <div className="mt-6 flex flex-wrap gap-4">
-          {(selected.image_paths ?? []).map((path) => {
-            const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+  <div className="mt-6 flex flex-wrap gap-4">
+    {(selected.image_paths ?? []).map((path) => {
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
 
-            return (
-              <img
-                key={path}
-                src={data.publicUrl}
-                alt={selected.name}
-                className="h-40 w-32 object-cover"
-              />
-            )
-          })}
+      return (
+        <div key={path}>
+          <img
+            src={data.publicUrl}
+            alt={selected.name}
+            className="h-50 w-90 object-cover"
+          />
+
+          <label className="mt-2 block cursor-pointer text-sm font-bold underline">
+            Replace photo
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={pending}
+              className="sr-only"
+              onChange={(event) => {
+                const replacement = event.target.files?.[0]
+                event.target.value = ''
+                handleReplace(path, replacement)
+              }}
+            />
+          </label>
         </div>
-      )}
+      )
+    })}
+  </div>
+)}
     </section>
   )
 }

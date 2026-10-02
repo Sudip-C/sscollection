@@ -62,9 +62,11 @@ function App() {
                     Admin
                   </Link>
                 )}
-                <span className="hidden max-w-48 truncate text-sm sm:block">
-                  {user.email}
-                </span>
+                {user.app_metadata?.role !== "admin" && (
+                  <span className="hidden max-w-48 truncate text-sm sm:block">
+                    {user.email}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={handleSignOut}

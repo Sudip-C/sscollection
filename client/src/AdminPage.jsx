@@ -4,6 +4,7 @@ import { adminFetch } from './lib/adminApi'
 import ProductDraftForm from './ProductDraftForm'
 import ProductImages from './ProductImages.jsx'
 import ProductPublishing from './ProductPublishing.jsx'
+import ProductEditor from './ProductEditor'
 
 function AdminPage() {
   const [status, setStatus] = useState('checking')
@@ -203,6 +204,7 @@ function AdminPage() {
         )}
         {status === 'ready' && <ProductImages />}
         {status === 'ready' && <ProductPublishing />}
+        {status === 'ready' && <ProductEditor categories={categories} />}
       </main>
     </div>
   )

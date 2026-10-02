@@ -1,23 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
+import ProductDrawer from "./ProductDrawer";
 
 const formatPrice = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
 });
-
-const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER?.replace(/\D/g, "");
-
-function getWhatsAppUrl(product) {
-  if (!/^\d{10,15}$/.test(whatsappNumber ?? "")) return null;
-
-  const message =
-    `Hi ss.collection! I'm interested in ${product.name} ` +
-    `(SKU: ${product.sku}) at ${formatPrice.format(product.price_paise / 100)}. ` +
-    "Is it available?";
-
-  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-}
 
 export default function ProductGrid() {
   const [products, setProducts] = useState([]);
@@ -29,6 +17,7 @@ export default function ProductGrid() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -38,7 +27,7 @@ export default function ProductGrid() {
         supabase
           .from("products")
           .select(
-            "id,sku, name, description, price_paise, image_paths, categories(id, name)",
+            "id, sku, name, description, price_paise, image_paths, sizes, colors, categories(id, name)",
           )
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
@@ -208,42 +197,46 @@ export default function ProductGrid() {
 
             return (
               <article key={product.id} className="bg-surface">
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={product.name}
-                    loading="lazy"
-                    className="aspect-[4/5] w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex aspect-[4/5] items-center justify-center bg-line text-muted">
-                    Image coming soon
-                  </div>
-                )}
-
-                <div className="p-5">
-                  <p className="text-xs font-bold tracking-widest text-accent uppercase">
-                    {product.categories?.name ?? "ss.collection"}
-                  </p>
-                  <h3 className="mt-2 text-xl font-bold">{product.name}</h3>
-                  <p className="mt-2 text-lg font-bold">
-                    {formatPrice.format(product.price_paise / 100)}
-                  </p>
-                  {getWhatsAppUrl(product) && (
-                    <a
-                      href={getWhatsAppUrl(product)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-5 inline-block bg-ink px-5 py-3 text-sm font-bold text-cream"
-                    >
-                      Ask on WhatsApp
-                    </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProduct(product)}
+                  className="block w-full text-left"
+                  aria-label={`View details for ${product.name}`}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={product.name}
+                      loading="lazy"
+                      className="aspect-[4/5] w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex aspect-[4/5] items-center justify-center bg-line text-muted">
+                      Image coming soon
+                    </div>
                   )}
-                </div>
+
+                  <div className="p-5">
+                    <p className="text-xs font-bold tracking-widest text-accent uppercase">
+                      {product.categories?.name ?? "ss.collection"}
+                    </p>
+                    <h3 className="mt-2 text-xl font-bold">{product.name}</h3>
+                    <p className="mt-2 text-lg font-bold">
+                      {formatPrice.format(product.price_paise / 100)}
+                    </p>
+                    
+                  </div>
+                </button>
               </article>
             );
           })}
         </div>
+        {selectedProduct && (
+          <ProductDrawer
+            product={selectedProduct}
+            onClose={() => setSelectedProduct(null)}
+          />
+        )}
       </div>
     </section>
   );
