@@ -1,0 +1,25 @@
+[build]
+  command = "npm --prefix client ci && npm --prefix server ci && npm --prefix client run build"
+  publish = "client/dist"
+
+[functions]
+  directory = "server/netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["express"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/api/health"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
