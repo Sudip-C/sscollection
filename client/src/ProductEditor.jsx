@@ -185,7 +185,7 @@ export default function ProductEditor({ categories }) {
       if (loadError) setError(loadError.message);
       else {
         setProducts(data);
-        setSelectedId(data[0]?.id ?? "");
+        setSelectedId("");
       }
 
       setLoading(false);
@@ -242,7 +242,7 @@ async function handleDelete() {
         (product) => product.id !== selected.id,
       );
       setProducts(remaining);
-      setSelectedId(remaining[0]?.id ?? "");
+      setSelectedId("");
 
       if (paths.length > 0) {
         const { error: imageError } = await supabase.storage
@@ -266,36 +266,167 @@ async function handleDelete() {
     }
   }
   return (
-    <section className="mt-10 bg-surface p-6 sm:p-8">
-      <h2 className="text-lg font-bold">Edit product</h2>
-
-      {loading && <p className="mt-4">Loading products…</p>}
-      {error && (
-        <p role="alert" className="mt-4 text-red-700">
-          {error}
+  <section className="mt-10 bg-surface p-6 sm:p-8">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-xs font-bold tracking-widest text-accent uppercase">
+          Catalogue
         </p>
-      )}
-      {message && <p role="status" className="mt-4">{message}</p>}
-      {!loading && !error && products.length === 0 && (
-        <p className="mt-4">No products yet.</p>
-      )}
+        <h2 className="mt-2 font-display text-4xl uppercase">
+          Products ({products.length})
+        </h2>
+      </div>
+    </div>
 
-      {selected && (
-        <>
-          <label className="mt-6 grid max-w-2xl gap-2 text-sm font-bold">
-            Choose a product
-            <select
-              value={selectedId}
-              onChange={(event) => setSelectedId(event.target.value)}
-              className="border border-line bg-cream px-4 py-3"
+    {loading && <p className="mt-6">Loading products…</p>}
+
+    {error && (
+      <p role="alert" className="mt-4 text-red-700">
+        {error}
+      </p>
+    )}
+
+    {message && (
+      <p role="status" className="mt-4 text-green-800">
+        {message}
+      </p>
+    )}
+
+    {!loading && products.length === 0 && (
+      <p className="mt-6">No products yet.</p>
+    )}
+
+    <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {products.map((product) => {
+        const imagePath = product.image_paths?.[0]
+        const imageUrl = imagePath
+          ? supabase.storage
+              .from("product-images")
+              .getPublicUrl(imagePath).data.publicUrl
+          : null
+
+        return (
+          <article
+            key={product.id}
+            className="overflow-hidden border border-line bg-cream"
+          >
+            <div className="relative">
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt={product.name}
+                  className="aspect-[4/5] w-full object-cover"
+                />
+              ) : (
+                <div className="flex aspect-[4/5] items-center justify-center bg-line text-sm text-muted">
+                  No image
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedId(product.id)
+                  setError("")
+                  setMessage("")
+                }}
+                aria-label={`Edit ${product.name}`}
+                title={`Edit ${product.name}`}
+                className="absolute top-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-cream shadow-lg"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-5">
+              <p className="text-xs font-bold tracking-widest text-accent uppercase">
+                {product.sku}
+              </p>
+
+              <h3 className="mt-2 text-xl font-bold">
+                {product.name}
+              </h3>
+
+              <p className="mt-2 font-bold">
+                ₹{(product.price_paise / 100).toFixed(2)}
+              </p>
+            </div>
+          </article>
+        )
+      })}
+    </div>
+
+    {selected && (
+      <div
+        className="fixed inset-0 z-50 flex justify-end bg-black/50"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            setSelectedId("")
+          }
+        }}
+      >
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-product-title"
+          className="h-full w-full max-w-2xl overflow-y-auto bg-surface p-6 shadow-2xl sm:p-8"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold tracking-widest text-accent uppercase">
+                {selected.sku}
+              </p>
+
+              <h2
+                id="edit-product-title"
+                className="mt-2 font-display text-4xl uppercase"
+              >
+                Edit {selected.name}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedId("")}
+              aria-label="Close product editor"
+              className="flex h-11 w-11 items-center justify-center border border-line text-2xl"
             >
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} ({product.sku})
-                </option>
-              ))}
-            </select>
-          </label>
+              ×
+            </button>
+          </div>
+
+          <div className="mt-6 flex gap-3 overflow-x-auto">
+            {(selected.image_paths ?? []).map((path) => {
+              const imageUrl = supabase.storage
+                .from("product-images")
+                .getPublicUrl(path).data.publicUrl
+
+              return (
+                <img
+                  key={path}
+                  src={imageUrl}
+                  alt={selected.name}
+                  className="h-48 w-36 shrink-0 object-cover"
+                />
+              )
+            })}
+
+            {!selected.image_paths?.length && (
+              <div className="flex h-48 w-36 items-center justify-center bg-line text-sm text-muted">
+                No image
+              </div>
+            )}
+          </div>
 
           <EditForm
             key={selected.id}
@@ -303,16 +434,27 @@ async function handleDelete() {
             categories={categories}
             onSaved={handleSaved}
           />
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={handleDelete}
-            className="mt-8 border border-red-700 px-5 py-3 font-bold text-red-700 disabled:opacity-50"
-          >
-            {deleting ? "Deleting…" : "Delete product permanently"}
-          </button>
-        </>
-      )}
-    </section>
-  );
+
+          <div className="mt-10 border-t border-line pt-6">
+            <p className="font-bold text-red-700">Danger zone</p>
+            <p className="mt-2 text-sm text-muted">
+              This permanently deletes {selected.name} and all its images.
+            </p>
+
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="mt-4 border border-red-700 px-5 py-3 font-bold text-red-700 disabled:opacity-50"
+            >
+              {deleting
+                ? "Deleting…"
+                : `Delete ${selected.name} permanently`}
+            </button>
+          </div>
+        </aside>
+      </div>
+    )}
+  </section>
+)
 }

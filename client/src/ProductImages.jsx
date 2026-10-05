@@ -272,7 +272,7 @@ export default function ProductImages() {
           </select>
         </label>
 
-        <label className="grid gap-2 text-sm font-bold cursor-pointer">
+        <label className="grid gap-2   border-line bg-cream px-4 py-3 rounded-l  text-sm font-bold cursor-pointer">
           Image (JPG, PNG, or WebP; maximum 2 MB)
           <input
             ref={fileInput}
