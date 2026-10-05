@@ -1,74 +1,103 @@
-import { useEffect, useState } from 'react'
-import { supabase } from './lib/supabase'
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+import {
+  notifyProductChanged,
+  subscribeToProductChanges,
+} from "./lib/catalogEvents";
 
 export default function ProductPublishing() {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [pendingId, setPendingId] = useState(null)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pendingId, setPendingId] = useState(null);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    let active = true
+    let active = true;
 
     async function load() {
       const { data, error: loadError } = await supabase
-        .from('products')
-        .select('id, name, sku, image_paths, is_active')
-        .order('created_at', { ascending: false })
+        .from("products")
+        .select("id, name, sku, image_paths, is_active")
+        .order("created_at", { ascending: false });
 
-      if (!active) return
+      if (!active) return;
 
-      if (loadError) setError(loadError.message)
-      else setProducts(data)
+      if (loadError) setError(loadError.message);
+      else setProducts(data);
 
-      setLoading(false)
+      setLoading(false);
     }
 
-    load()
+    load();
 
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    return subscribeToProductChanges(({ type, product }) => {
+      if (!product?.id) return;
 
+      setProducts((current) => {
+        if (type === "deleted") {
+          return current.filter((item) => item.id !== product.id);
+        }
+
+        const exists = current.some((item) => item.id === product.id);
+
+        if (!exists) {
+          return [product, ...current];
+        }
+
+        return current.map((item) =>
+          item.id === product.id ? { ...item, ...product } : item,
+        );
+      });
+    });
+  }, []);
   async function togglePublished(product) {
-    setError('')
-    setMessage('')
+    setError("");
+    setMessage("");
 
-    const nextActive = !product.is_active
+    const nextActive = !product.is_active;
 
     if (nextActive && !product.image_paths?.length) {
-      setError('Add at least one image before publishing.')
-      return
+      setError("Add at least one image before publishing.");
+      return;
     }
 
-    setPendingId(product.id)
+    setPendingId(product.id);
 
     try {
       const { data, error: updateError } = await supabase
-        .from('products')
+        .from("products")
         .update({ is_active: nextActive })
-        .eq('id', product.id)
-        .select('id, is_active')
-        .single()
+        .eq("id", product.id)
+        .select("id, is_active")
+        .single();
 
-      if (updateError) throw updateError
+      if (updateError) throw updateError;
 
       setProducts((current) =>
         current.map((item) =>
-          item.id === data.id
-            ? { ...item, is_active: data.is_active }
-            : item,
+          item.id === data.id ? { ...item, is_active: data.is_active } : item,
         ),
-      )
+      );
+      notifyProductChanged({
+        type: "updated",
+        product: {
+          ...product,
+          is_active: data.is_active,
+        },
+      });
       setMessage(
-        `${product.name} ${data.is_active ? 'published' : 'unpublished'}.`,
-      )
+        `${product.name} ${data.is_active ? "published" : "unpublished"}.`,
+      );
     } catch (updateError) {
-      setError(updateError.message)
+      setError(updateError.message);
     } finally {
-      setPendingId(null)
+      setPendingId(null);
     }
   }
 
@@ -77,8 +106,16 @@ export default function ProductPublishing() {
       <h2 className="text-lg font-bold">Publish products</h2>
 
       {loading && <p className="mt-4">Loading products…</p>}
-      {error && <p role="alert" className="mt-4 text-red-700">{error}</p>}
-      {message && <p role="status" className="mt-4">{message}</p>}
+      {error && (
+        <p role="alert" className="mt-4 text-red-700">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p role="status" className="mt-4">
+          {message}
+        </p>
+      )}
 
       {!loading && products.length === 0 && (
         <p className="mt-4">No products yet.</p>
@@ -93,8 +130,8 @@ export default function ProductPublishing() {
             <div>
               <p className="font-bold">{product.name}</p>
               <p className="text-sm text-muted">
-                {product.sku} · {product.image_paths?.length ?? 0} image(s) ·{' '}
-                {product.is_active ? 'Published' : 'Draft'}
+                {product.sku} · {product.image_paths?.length ?? 0} image(s) ·{" "}
+                {product.is_active ? "Published" : "Draft"}
               </p>
             </div>
 
@@ -108,14 +145,14 @@ export default function ProductPublishing() {
               className="bg-ink px-5 py-2 font-bold text-cream disabled:opacity-50"
             >
               {pendingId === product.id
-                ? 'Saving…'
+                ? "Saving…"
                 : product.is_active
-                  ? 'Unpublish'
-                  : 'Publish'}
+                  ? "Unpublish"
+                  : "Publish"}
             </button>
           </li>
         ))}
       </ul>
     </section>
-  )
+  );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { adminFetch } from "./lib/adminApi";
+import { notifyProductChanged } from "./lib/catalogEvents";
 
 export default function ProductDraftForm({ categories }) {
   const [categoryId, setCategoryId] = useState("");
@@ -17,7 +18,6 @@ export default function ProductDraftForm({ categories }) {
     setPending(true);
     setError("");
     setSavedProduct(null);
-
     try {
       const response = await adminFetch("/api/admin/products", {
         method: "POST",
@@ -47,6 +47,10 @@ export default function ProductDraftForm({ categories }) {
       const product = result.product;
 
       setSavedProduct(product);
+      notifyProductChanged({
+        type: "created",
+        product,
+      });
       setName("");
       setDescription("");
       setPrice("");
