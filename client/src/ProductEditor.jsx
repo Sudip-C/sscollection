@@ -315,6 +315,8 @@ async function handleDelete() {
                 <img
                   src={imageUrl}
                   alt={product.name}
+                  loading="lazy"
+                  decoding="async"
                   className="aspect-[4/5] w-full object-cover"
                 />
               ) : (
@@ -416,6 +418,8 @@ async function handleDelete() {
                   key={path}
                   src={imageUrl}
                   alt={selected.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-48 w-36 shrink-0 object-cover"
                 />
               )

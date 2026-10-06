@@ -208,6 +208,7 @@ export default function ProductGrid() {
                       src={imageUrl}
                       alt={product.name}
                       loading="lazy"
+                      decoding="async"
                       className="aspect-[4/5] w-full object-cover"
                     />
                   ) : (

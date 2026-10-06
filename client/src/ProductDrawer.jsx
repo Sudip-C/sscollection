@@ -127,6 +127,7 @@ export default function ProductDrawer({ product, onClose }) {
           <img
             src={imageUrl}
             alt={product.name}
+            decoding="async"
             className="mt-8 aspect-[4/3] w-full object-cover"
           />
         ) : (
@@ -158,6 +159,8 @@ export default function ProductDrawer({ product, onClose }) {
                   <img
                     src={thumbnailUrl}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="h-20 w-20 object-cover"
                   />
                 </button>

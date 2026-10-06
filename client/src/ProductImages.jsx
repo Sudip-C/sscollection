@@ -4,19 +4,19 @@ import {
   notifyProductChanged,
   subscribeToProductChanges,
 } from "./lib/catalogEvents";
+import {
+  formatFileSize,
+  optimizeProductImage,
+} from "./lib/optimizeProductImage";
 
 const bucket = "product-images";
-const extensions = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 
 export default function ProductImages() {
   const [products, setProducts] = useState([]);
   const [productId, setProductId] = useState("");
   const [file, setFile] = useState(null);
   const [pending, setPending] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const fileInput = useRef(null);
@@ -81,22 +81,21 @@ export default function ProductImages() {
 
     if (!selected || !file) return;
 
-    const extension = extensions[file.type];
-
-    if (!extension || file.size > 2 * 1024 * 1024) {
-      setError("Choose a JPG, PNG, or WebP image under 2 MB.");
-      return;
-    }
-
     setPending(true);
+    setProgress(0);
 
-    const path = `products/${selected.id}/${crypto.randomUUID()}.${extension}`;
+    let path;
 
     try {
+      const optimized = await optimizeProductImage(file, setProgress);
+      setProgress(100);
+      path = `products/${selected.id}/${crypto.randomUUID()}.webp`;
+
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(path, file, {
-          contentType: file.type,
+        .upload(path, optimized.file, {
+          contentType: optimized.file.type,
+          cacheControl: "31536000",
           upsert: false,
         });
 
@@ -139,11 +138,14 @@ export default function ProductImages() {
       });
       setFile(null);
       if (fileInput.current) fileInput.current.value = "";
-      setMessage(`Image added to ${selected.name}.`);
+      setMessage(
+        `Image added to ${selected.name}. ${formatFileSize(optimized.originalSize)} → ${formatFileSize(optimized.optimizedSize)}.`,
+      );
     } catch (uploadOrSaveError) {
       setError(uploadOrSaveError.message);
     } finally {
       setPending(false);
+      setProgress(0);
     }
   }
   async function handleReplace(oldPath, replacement) {
@@ -152,25 +154,23 @@ export default function ProductImages() {
     setError("");
     setMessage("");
 
-    const extension = extensions[replacement.type];
-
-    if (!extension || replacement.size > 2 * 1024 * 1024) {
-      setError("Choose a JPG, PNG, or WebP image under 2 MB.");
-      return;
-    }
-
     setPending(true);
+    setProgress(0);
 
     const productId = selected.id;
     const productName = selected.name;
-    const newPath = `products/${productId}/${crypto.randomUUID()}.${extension}`;
+    const newPath = `products/${productId}/${crypto.randomUUID()}.webp`;
     let uploaded = false;
 
     try {
+      const optimized = await optimizeProductImage(replacement, setProgress);
+      setProgress(100);
+
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(newPath, replacement, {
-          contentType: replacement.type,
+        .upload(newPath, optimized.file, {
+          contentType: optimized.file.type,
+          cacheControl: "31536000",
           upsert: false,
         });
 
@@ -231,7 +231,9 @@ export default function ProductImages() {
         return;
       }
 
-      setMessage(`Photo replaced for ${productName}.`);
+      setMessage(
+        `Photo replaced for ${productName}. ${formatFileSize(optimized.originalSize)} → ${formatFileSize(optimized.optimizedSize)}.`,
+      );
     } catch (replaceError) {
       if (uploaded) {
         const { error: cleanupError } = await supabase.storage
@@ -248,6 +250,7 @@ export default function ProductImages() {
       }
     } finally {
       setPending(false);
+      setProgress(0);
     }
   }
   return (
@@ -273,7 +276,7 @@ export default function ProductImages() {
         </label>
 
         <label className="grid gap-2   border-line bg-cream px-4 py-3 rounded-l  text-sm font-bold cursor-pointer">
-          Image (JPG, PNG, or WebP; maximum 2 MB)
+          Image (JPG, PNG, or WebP; source maximum 10 MB)
           <input
             ref={fileInput}
             type="file"
@@ -288,7 +291,11 @@ export default function ProductImages() {
           disabled={pending || !selected || !file}
           className="w-fit bg-ink px-6 py-3 font-bold text-cream disabled:opacity-50"
         >
-          {pending ? "Uploading…" : "Upload image"}
+          {pending
+            ? progress < 100
+              ? `Optimizing… ${progress}%`
+              : "Uploading…"
+            : "Upload image"}
         </button>
       </form>
 
@@ -313,6 +320,8 @@ export default function ProductImages() {
                 <img
                   src={data.publicUrl}
                   alt={selected.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-50 w-90 object-cover"
                 />
 
